@@ -1,6 +1,0 @@
-/damian_test1.wav
-/dima_test1.wav
-/damian_test2.wav
-/damian_test3.wav
-/dima_test2.wav
-/dima_test3.wav

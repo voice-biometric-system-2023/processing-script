@@ -1,3 +1,4 @@
+import io
 import os
 import wave
 import time
@@ -63,48 +64,33 @@ def plot_mfcc_features(mfcc_features):
     plt.colorbar()
     plt.show()
 
-def train_model():
+def train_model(audio_path):
 
-    source   = "/home/dimatkchnk/sem7/biometria/speaker-identification/training_set"
-    dest = "/home/dimatkchnk/sem7/biometria/speaker-identification/trained_models/"
-    train_file = "/home/dimatkchnk/sem7/biometria/speaker-identification/training_set_addition.txt"
-    file_paths = open(train_file,'r')
-    count = 1
+    dest = "/home/dimatkchnk/sem7/biometria/git/speaker-identification/processing-script/trained_models/"
     features = np.asarray(())
-    for path in file_paths:
-        path = path.strip()
-        print(path)
 
-        sr,audio = read(source + path)
-        print("Sample Rate: ", str(sr))
-        print("Data: ", str(audio))
+    sr, audio = read(audio_path)
+    print("Sample Rate: ", str(sr))
+    print("Data: ", str(audio))
 
-        vector = extract_features(audio,sr)
+    vector = extract_features(audio, sr)
 
-        if features.size == 0:
-            features = vector
-        else:
-            features = np.vstack((features, vector))
+    if features.size == 0:
+        features = vector
+    else:
+        features = np.vstack((features, vector))
 
-        if count == 5:
-            gmm = GaussianMixture(n_components = 6, max_iter = 200, covariance_type='diag',n_init = 3)
-            gmm.fit(features)
+    gmm = GaussianMixture(n_components=6, max_iter=500, covariance_type='diag', n_init=5)
+    gmm.fit(features)
 
-            # dumping the trained gaussian model
-            picklefile = path.split("-")[0]+".gmm"
-            pickle.dump(gmm,open(dest + picklefile,'wb'))
-            print('+ modeling completed for speaker:',picklefile," with data point = ",features.shape)
-            features = np.asarray(())
-            count = 0
-        count = count + 1
+    # dumping the trained gaussian model
+    picklefile = audio_path.split("/")[-1] + ".gmm"
+    pickle.dump(gmm, open(dest + picklefile, 'wb'))
+    print('+ modeling completed for speaker: ', " with data point = ", features.shape)
 
+def test_model(audio_path):
 
-def test_model():
-
-    source   = "/home/dimatkchnk/sem7/biometria/speaker-identification/testing_set"
-    modelpath = "/home/dimatkchnk/sem7/biometria/speaker-identification/trained_models"
-    test_file = "/home/dimatkchnk/sem7/biometria/speaker-identification/testing_set_addition.txt"
-    file_paths = open(test_file,'r')
+    modelpath = "/home/dimatkchnk/sem7/biometria/git/speaker-identification/processing-script/trained_models/"
 
     gmm_files = [os.path.join(modelpath,fname) for fname in
                   os.listdir(modelpath) if fname.endswith('.gmm')]
@@ -112,31 +98,22 @@ def test_model():
     models    = [pickle.load(open(fname,'rb')) for fname in gmm_files]
     speakers   = [fname.split("/")[-1].split(".gmm")[0] for fname
                   in gmm_files]
-    for path in file_paths:
 
-        path = path.strip()
-        print(path)
-        sr,audio = read(source + path)
-        vector   = extract_features(audio,sr)
+    path = audio_path.strip()
+    print(path)
+    sr, audio = read(path)
+    vector = extract_features(audio, sr)
 
-        log_likelihood = np.zeros(len(models))
+    log_likelihood = np.zeros(len(models))
 
-        for i in range(len(models)):
-            gmm = models[i]
-            scores = np.array(gmm.score(vector))
-            log_likelihood[i] = scores.sum()
+    for i in range(len(models)):
+        gmm = models[i]
+        scores = np.array(gmm.score(vector))
+        log_likelihood[i] = scores.sum()
 
-        print(log_likelihood)
-        winner = np.argmax(log_likelihood)
-        print(winner)
-        print("\tdetected as - ", speakers[winner])
-        time.sleep(1.0)
+    print(log_likelihood)
+    winner = np.argmax(log_likelihood)
+    print("\tdetected as - ", speakers[winner])
 
-while True:
-    choice=int(input("\n 1.Record audio for training \n 2.Train Model \n 3.Record audio for testing \n 4.Test Model\n"))
-    if(choice==2):
-        train_model()
-    elif(choice==4):
-        test_model()
-    if(choice>4):
-        exit()
+    return speakers[winner].split('.')[0]
+
